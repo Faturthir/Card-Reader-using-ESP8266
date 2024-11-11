@@ -6,8 +6,8 @@
 #include <time.h>
 
 // WiFi credentials
-const char* ssid = "A53s";
-const char* password = "11111111";
+const char* ssid = "CPSRG";
+const char* password = "CPSJAYA123";
 
 // Firebase credentials
 #define FIREBASE_HOST "attendance-c4ae9-default-rtdb.firebaseio.com"
@@ -24,20 +24,26 @@ FirebaseConfig config;
 MFRC522 mfrc522(SS_PIN, RST_PIN);  // Create MFRC522 instance
 
 // I2C LCD setup (change address if necessary)
-LiquidCrystal_I2C lcd(0x27, 16, 2);  // Address 0x27, 16 characters and 2 rows
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+// Function declarations
+void connectToWiFi();
+void checkNameInFirebase(String rfidData);
+void uploadToFirebase(String rfidData, String name);
+String getFormattedTime();
+void resetIfOlderThan24Hours(String rfidData);
 
 void setup() {
-  // Start Serial Communication
   Serial.begin(115200);
   while (!Serial);
 
   // Initialize RFID
-  SPI.begin(); // Initialize SPI bus
-  mfrc522.PCD_Init(); // Initialize MFRC522 RFID reader
+  SPI.begin(); 
+  mfrc522.PCD_Init(); 
 
   // Initialize LCD
-  lcd.begin(16, 2);      // Initialize LCD
-  lcd.backlight();  // Turn on the backlight
+  lcd.begin(16, 2);
+  lcd.backlight();
   lcd.setCursor(0, 0);
   lcd.print("Initializing...");
 
@@ -97,7 +103,7 @@ void loop() {
       // Show confirmation on LCD
       lcd.clear();
       lcd.setCursor(0, 0);
-      lcd.print("Uploading...");
+      lcd.print("Uploading..");
     }
   }
 }
@@ -106,7 +112,7 @@ void connectToWiFi() {
   WiFi.begin(ssid, password);
   int retryCount = 0;
   while (WiFi.status() != WL_CONNECTED && retryCount < 20) {
-    delay(1000);
+    delay(500);
     Serial.println("Connecting to WiFi...");
     retryCount++;
   }
@@ -123,7 +129,7 @@ void connectToWiFi() {
     lcd.print("WiFi failed");
   }
 
-  delay(2000); // Wait 2 seconds to show WiFi status
+  delay(1000); // Wait 2 seconds to show WiFi status
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("Ready to scan");
@@ -138,22 +144,32 @@ void checkNameInFirebase(String rfidData) {
   if (Firebase.getString(firebaseData, path)) {
     if (firebaseData.dataType() == "string") {
       String name = firebaseData.stringData();
-      Serial.println("UID matched with name: " + name);
+      
+      // Cek jika data tidak kosong
+      if (name.length() > 0) {
+        Serial.println("Name: " + name);
 
-      // Display the name on the LCD
-      lcd.clear();
-      lcd.setCursor(0, 0);
-      lcd.print("Name Found:");
-      lcd.setCursor(0, 1);
-      lcd.print(name);
+        // Display the name on the LCD
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("Name :");
+        lcd.setCursor(0, 1);
+        lcd.print(name);
 
-      // Optional: Upload data to Firebase
-      uploadToFirebase(rfidData, name);
+        // Optional: Upload data to Firebase
+        uploadToFirebase(rfidData, name);
+      } else {
+        // UID tidak terdefinisi
+        Serial.println("tidak terdaftar");
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("tidak terdaftar");
+      }
     } else {
-      Serial.println("RFID UID not found in Firebase.");
+      Serial.println("tidak terdaftar");
       lcd.clear();
       lcd.setCursor(0, 0);
-      lcd.print("UID not found!");
+      lcd.print("tidak terdaftar");
     }
   } else {
     Serial.println("Error fetching data from Firebase: " + firebaseData.errorReason());
@@ -162,18 +178,33 @@ void checkNameInFirebase(String rfidData) {
     lcd.print("Error fetching!");
   }
 
-  delay(2000); // Wait 2 seconds before going back to ready state
+  delay(1000); 
 }
 
 void uploadToFirebase(String rfidData, String name) {
-  String timestamp = getFormattedTime();
-  String path = "/attendance/" + rfidData + "/" + timestamp;
+  // Get current date (without time) to use as the daily key
+  String currentDate = getFormattedTime().substring(0, 10); // YYYY-MM-DD
+  String path = "/attendance/" + rfidData + "/" + currentDate;
 
-  // Check if previous data is older than 24 hours and reset if necessary
-  resetIfOlderThan24Hours(rfidData);
+  // Check if there's already an entry for today
+  if (Firebase.getString(firebaseData, path)) {
+    if (firebaseData.stringData().length() > 0) {
+      Serial.println("Already tapped today.");
+      
+      // Display message on LCD
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("Already tapped");
+      lcd.setCursor(0, 1);
+      lcd.print("today.");
+      delay(1000);
+      return;
+    }
+  }
 
+  // Proceed with upload if no entry for today
   if (Firebase.setString(firebaseData, path, name)) {
-    Serial.println("Data uploaded to Firebase: " + name);
+    Serial.println("Data uploaded: " + name);
     
     // Show success on LCD
     lcd.clear();
@@ -182,7 +213,7 @@ void uploadToFirebase(String rfidData, String name) {
     lcd.setCursor(0, 1);
     lcd.print(name);
   } else {
-    Serial.println("Error uploading data to Firebase: " + firebaseData.errorReason());
+    Serial.println("Error uploading data: " + firebaseData.errorReason());
 
     // Show error on LCD
     lcd.clear();
@@ -192,7 +223,7 @@ void uploadToFirebase(String rfidData, String name) {
     lcd.print(firebaseData.errorReason());
   }
 
-  delay(2000); // Wait 2 seconds before going back to ready state
+  delay(1000); 
 }
 
 String getFormattedTime() {
@@ -212,7 +243,7 @@ void resetIfOlderThan24Hours(String rfidData) {
   if (Firebase.getString(firebaseData, path + "/lastUploadTime")) {
     String lastUploadTime = firebaseData.stringData();
 
-    // Convert last upload time and current time to time_t for comparison
+    
     struct tm lastUpload;
     struct tm currentTime;
 
