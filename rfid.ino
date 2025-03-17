@@ -4,8 +4,8 @@
 #define SS_PIN D4   // Pin SDA (gunakan D4 pada ESP8266)
 #define RST_PIN D3  // Pin Reset (gunakan D3 pada ESP8266)
 
-const char* ssid = "A53s";         // Ganti dengan SSID WiFi kamu
-const char* password = "11111111"; // Ganti dengan password WiFi kamu
+const char* ssid = " ";         // Ganti dengan SSID WiFi kamu
+const char* password = " "; // Ganti dengan password WiFi kamu
 
 MFRC522 rfid(SS_PIN, RST_PIN);  // Membuat instance dari kelas MFRC522
 
