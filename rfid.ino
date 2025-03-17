@@ -1,7 +1,6 @@
 #include <SPI.h>
 #include <MFRC522.h>
 #include <ESP8266WiFi.h>  // Pustaka Wi-Fi untuk ESP8266
-
 #define SS_PIN D4   // Pin SDA (gunakan D4 pada ESP8266)
 #define RST_PIN D3  // Pin Reset (gunakan D3 pada ESP8266)
 
@@ -29,7 +28,6 @@ void setup() {
   Serial.println("Terhubung ke WiFi");
   Serial.print("Alamat IP: ");
   Serial.println(WiFi.localIP());
-
   Serial.println("Letakkan kartu RFID di dekat pembaca...");
 }
 
@@ -50,6 +48,5 @@ void loop() {
   // Menghentikan PICC dan menghentikan enkripsi di PCD
   rfid.PICC_HaltA();
   rfid.PCD_StopCrypto1();
-
   delay(150);  // Penundaan kecil sebelum melakukan pembacaan berikutnya
 }
